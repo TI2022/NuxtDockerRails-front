@@ -1,13 +1,16 @@
-FROM node:17.7.2-alpine
+FROM node:16.14.2-alpine
 # Alpineベースのnodeをベースイメージとしています。
 
 ARG WORKDIR
 ARG CONTAINER_PORT
+ARG API_URL
+# docker-compose.ymlへ環境変数を送る
 
 ENV HOME=/${WORKDIR} \
     LANG=C.UTF-8 \
     TZ=Asia/Tokyo \
-    HOST=0.0.0.0
+    HOST=0.0.0.0 \
+    API_URL=${API_URL}
 # ENV HOST=0.0.0.0
 # これを指定しないとブラウザからhttp://localhost へアクセスすることができません。
 # RailsのDockerfileで指定した、CMD ["rails", "server", "-b", "0.0.0.0"]と同じ意味を持つんですね。
@@ -36,8 +39,27 @@ ENV HOME=/${WORKDIR} \
 # ENV check（このRUN命令は確認のためなので無くても良い）
 RUN echo ${HOME}
 RUN echo ${CONTAINER_PORT}
+RUN echo ${API_URL}
 
 WORKDIR ${HOME}
+
+COPY package*.json ./
+RUN yarn install
+
+COPY . ./
+
+RUN yarn run build
+# yarn run buildは、package.jsonのbuildスクリプトを実行しています。
+# "scripts": {
+#   "dev": "nuxt",
+#   "build": "nuxt build",  // ←ココ
+#   "start": "nuxt start",
+#   "generate": "nuxt generate",
+#   "lint": "eslint --ext .js,.vue --ignore-path .gitignore ."
+# },
+# つまりyarn run buildを実行すると、nuxt buildが実行されているのですね。
+# このnuxt buildは、Nuxt.jsをWebpackでビルド（構築）して、jsとcssをHeroku向けにミニファイルにしています。
+# これによりHerokuにもNuxt.jsアプリを表示することができるのです。
 
 EXPOSE ${CONTAINER_PORT}
 # EXPOSE <ポート番号>
